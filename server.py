@@ -9,18 +9,21 @@ def handle_client(client_socket, client_address):
     global list_clients
     
     try:
-        client_socket.send("Welcome to this chatroom!").encode('utf-8')
-        
+        welcome_msg = "<Server>: Welcome to this chatroom!\n"
+        instructions_msg = "<Server>: Type your messages below (type 'exit' to disconnect)"
+        client_socket.send((welcome_msg + instructions_msg).encode('utf-8'))
+
         while True:
-            data = client_socket.recv(1024).decode('utf-8')
-            
-            if not data:
-                print(f'Client {client_address} disconnected.\n')
+
+            data = client_socket.recv(2048).decode('utf-8')
+
+            if not data or data.strip().lower() == "exit":
+                print(f'\nClient {client_address} disconnected.')
                 break
             
-            print(f'<{client_address}>: {data}')
+            print(f'<{client_address[0]}>: {data}')
             
-            msg = f'<{client_address}>: {data}'
+            msg = f'<{client_address[0]}>: {data}'
             
             for client in list_clients:
                 if client != client_socket:
@@ -31,6 +34,7 @@ def handle_client(client_socket, client_address):
                         print(f'Ending connection with {client_address}.\n')
                         
                         client.close()
+
                         
                         if client in list_clients:
                             list_clients.remove(client)
@@ -39,13 +43,14 @@ def handle_client(client_socket, client_address):
     finally:
         client_socket.close()
         
-        if client in list_clients:
-            list_clients.remove(client)
+        with client_lock:
+            if client_socket in list_clients:
+                list_clients.remove(client_socket)
         
         print(f'Connection with {client_address} closed.')   
-        print(f"Number of connected clients: {list_clients.len()}\n")
+        print(f"Number of connected clients: {len(list_clients)}\n")
         
-        if list_clients.len() < 1:
+        if len(list_clients) < 1:
             print("Waiting for connection...\n")
         
 def start_server(addr='localhost', port=12345):
@@ -63,10 +68,9 @@ def start_server(addr='localhost', port=12345):
         while True:
             client_socket, client_address = server_socket.accept()
             
-            with client_lock:
-                list_clients.append(client_socket)
+            list_clients.append(client_socket)
             
-            print(f'<{client_address}> connected.')
+            print(f'<{client_address[0]}> connected.')
             
             client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
             client_thread.start()
