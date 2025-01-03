@@ -9,9 +9,10 @@ def handle_client(client_socket, client_address):
     global list_clients
     
     try:
-        welcome_msg = "<Server>: Welcome to this chatroom!\n"
+        welcome_msg = "<Server>: Welcome to this chatroom!"
         instructions_msg = "<Server>: Type your messages below (type 'exit' to disconnect)"
-        client_socket.send((welcome_msg + instructions_msg).encode('utf-8'))
+        client_socket.send((welcome_msg).encode('utf-8'))
+        client_socket.send((instructions_msg).encode('utf-8'))
 
         while True:
 
@@ -35,7 +36,6 @@ def handle_client(client_socket, client_address):
                         
                         client.close()
 
-                        
                         if client in list_clients:
                             list_clients.remove(client)
     except Exception as e:

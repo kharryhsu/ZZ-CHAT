@@ -1,27 +1,34 @@
 import socket
 import argparse
 import threading
+import sys
 
-def client_write(client_socket):
+def client_write(client_socket, client_lock):
     while True:
-        msg = input()
-        
-        if not msg.strip():
-            continue
-        
-        if msg.lower() == 'exit':
-            print("Closing connection.")
+        try:
+            msg = input()
             
+            if not msg.strip():
+                continue
+            
+            if msg.lower() == 'exit':
+                client_socket.send(msg.encode('utf-8'))
+                print("Closing connection.")
+                client_socket.close()
+                break
+
+            with client_lock:
+                sys.stdout.write(f'<You>: {msg}\n')
+                sys.stdout.write("> ")
+                sys.stdout.flush()
+
             client_socket.send(msg.encode('utf-8'))
-            client_socket.close()
-            
+            msg = ""
+        except Exception as e:
+            print(f"Error sending data: {e}")
             break
         
-        print(f'<You>: {msg}')
-        
-        client_socket.send(msg.encode('utf-8'))
-        
-def client_read(client_socket):
+def client_read(client_socket, client_lock):
     while True:
         try:
             data = client_socket.recv(2048).decode('utf-8')
@@ -30,13 +37,15 @@ def client_read(client_socket):
                 print("Server closed the connection.")
                 break
             
-            print(data)
+            with client_lock:
+                sys.stdout.write(f'\r{data}\n')
+                sys.stdout.write(f"> ")
+                sys.stdout.flush()
         except (ConnectionAbortedError, ConnectionResetError):
             break
         except Exception as e:
             print(f"Error receiving data: {e}")
             break
-
 
 def start_client(addr='localhost', port=12345):
     try:
@@ -47,10 +56,12 @@ def start_client(addr='localhost', port=12345):
         
         print(f'Connected to server at {addr}:{port}')
         
-        read_thread = threading.Thread(target=client_read, args=(client_socket,))
+        client_lock = threading.Lock()
+        
+        read_thread = threading.Thread(target=client_read, args=(client_socket, client_lock))
         read_thread.start()
         
-        write_thread = threading.Thread(target=client_write, args=(client_socket,))
+        write_thread = threading.Thread(target=client_write, args=(client_socket, client_lock))
         write_thread.start()
         
         read_thread.join()
